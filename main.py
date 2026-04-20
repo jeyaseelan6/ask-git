@@ -6,6 +6,8 @@ import os
 from pydantic import BaseModel
 from utils.github_loader import clone_repo, get_repo_id
 from fastapi import BackgroundTasks, HTTPException
+from utils.file_loader import load_files
+from utils.vector_database import create_vector_store, load_vector_store
 
 app = FastAPI()
 
