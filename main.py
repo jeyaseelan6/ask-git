@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 from pydantic import BaseModel
-from utils.github_loader import clone_repo
+from utils.github_loader import clone_repo, get_repo_id
+from fastapi import BackgroundTasks, HTTPException
 
 app = FastAPI()
 
@@ -20,6 +21,8 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+repo_status = {}
+
 class ProcessRequest(BaseModel):
     repo_url: str
 
@@ -28,10 +31,26 @@ def greeting():
     return {"message": "Hello world!"}
 
 @app.post("/api/process")
-def process(request: ProcessRequest):
-    clone_repo(request.repo_url)
-    return {"Cloned Successfully"}
-    
+async def process_repository(request: ProcessRequest, background_tasks: BackgroundTasks):
+    repo_url = request.repo_url
+    try:
+        repo_id = get_repo_id(repo_url)
+        repo_status[repo_id] = "processing"
 
+        # Run the heavy processing in the background
+        background_tasks.add_task(run_indexing, repo_url, repo_id)
+        
+        return {"repo_id" : repo_id, "status": "processing"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=(str(e)))
+    
+def run_indexing(repo_url, repo_id):
+    try:
+        path = clone_repo(repo_url)
+        repo_status[repo_id] = "completed"
+    except Exception as e:
+        print(f"Erro indexing {repo_id}: {e}")
+        repo_status[repo_id] = f"failed: {str(e)}"
+    
 if __name__ ==  "__main__":
     uvicorn.run(app,host="0.0.0.0", port=8000)
