@@ -49,6 +49,8 @@ async def process_repository(request: ProcessRequest, background_tasks: Backgrou
 def run_indexing(repo_url, repo_id):
     try:
         path = clone_repo(repo_url)
+        docs = load_files(path)
+        db = create_vector_store(docs, repo_id)
         repo_status[repo_id] = "completed"
     except Exception as e:
         print(f"Erro indexing {repo_id}: {e}")
