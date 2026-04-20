@@ -3,6 +3,8 @@ import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+from pydantic import BaseModel
+from utils.github_loader import clone_repo
 
 app = FastAPI()
 
@@ -18,13 +20,18 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+class ProcessRequest(BaseModel):
+    repo_url: str
+
 @app.get("/")
 def greeting():
     return {"message": "Hello world!"}
 
-@app.get("/welcome")
-def greeting2():
-    return {"message": "Welcome to Fast API"}
+@app.post("/api/process")
+def process(request: ProcessRequest):
+    clone_repo(request.repo_url)
+    return {"Cloned Successfully"}
+    
 
 if __name__ ==  "__main__":
     uvicorn.run(app,host="0.0.0.0", port=8000)
