@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from utils.github_loader import clone_repo, get_repo_id
 from fastapi import BackgroundTasks, HTTPException
 from utils.file_loader import load_files
+from utils.rag_chain import ask_question
 from utils.vector_database import create_vector_store, load_vector_store
 
 app = FastAPI()
@@ -27,6 +28,10 @@ repo_status = {}
 
 class ProcessRequest(BaseModel):
     repo_url: str
+    
+class  QueryRequest(BaseModel):
+    question: str
+    repo_id: str
 
 @app.get("/")
 def greeting():
@@ -55,6 +60,20 @@ def run_indexing(repo_url, repo_id):
     except Exception as e:
         print(f"Erro indexing {repo_id}: {e}")
         repo_status[repo_id] = f"failed: {str(e)}"
+        
+@app.get("/api/status/{repo_id}")
+async def get_status(repo_id: str):
+    status = repo_status.get(repo_id, "unknown")
+    return {"repo_id": repo_id, "status": status}
+        
+@app.post("/api/query")
+async def query_repository(request: QueryRequest):
+    print(request.question, request.repo_id)
+    try:
+        answer, sources = ask_question(request.question, request.repo_id)
+        return {"answer": answer, "sources": sources}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
 if __name__ ==  "__main__":
     uvicorn.run(app,host="0.0.0.0", port=8000)
